@@ -1,6 +1,8 @@
-import { app, BrowserWindow, dialog } from "electron";
+import { app, BrowserWindow, dialog, ipcMain } from "electron";
 import { join } from "path";
 import fs from "fs/promises";
+import { EVENTS } from "../enums";
+import Elements from "../renderer/elements";
 
 const createWindow = () => {
   const mainWindow = new BrowserWindow({
@@ -8,6 +10,7 @@ const createWindow = () => {
     height: 600,
     webPreferences: {
       preload: join(__dirname, "preload.js"),
+      nodeIntegration: true,
     },
   });
 
@@ -21,10 +24,6 @@ const createWindow = () => {
 
   mainWindow.webContents.openDevTools({
     mode: "detach",
-  });
-
-  mainWindow.once("ready-to-show", () => {
-    showOpenDialog();
   });
 };
 
@@ -42,15 +41,59 @@ app.on("activate", () => {
   }
 });
 
-const showOpenDialog = async () => {
-  const result = await dialog.showOpenDialog({
+const showOpenDialog = async (browserWindow: BrowserWindow) => {
+  const result = await dialog.showOpenDialog(browserWindow, {
     properties: ["openFile"],
     filters: [{ name: "Markdown File", extensions: ["md"] }],
   });
 
   if (result.canceled) return;
 
-  const content = await fs.readFile(result.filePaths[0], { encoding: "utf-8" });
+  const filePath = result.filePaths[0];
 
-  console.log(content);
+  await openFile(browserWindow, filePath);
+};
+
+const showSaveDialog = async (
+  browserWindow: BrowserWindow,
+  htmlContent: string,
+) => {
+  const result = await dialog.showSaveDialog(browserWindow, {
+    properties: ["createDirectory"],
+    filters: [{ name: "HTML File", extensions: ["html"] }],
+  });
+
+  if (result.canceled) return;
+
+  const filePath = result.filePath;
+
+  if (!filePath) return;
+
+  await saveFile(filePath, htmlContent);
+};
+
+ipcMain.on(EVENTS.OPEN_DIALOG, async (event) => {
+  const browserWindow = BrowserWindow.fromWebContents(event.sender);
+
+  if (!browserWindow) return;
+
+  await showOpenDialog(browserWindow);
+});
+
+ipcMain.on(EVENTS.EXPORT_HTML, async (event, htmlContent) => {
+  const browserWindow = BrowserWindow.fromWebContents(event.sender);
+
+  if (!browserWindow) return;
+
+  await showSaveDialog(browserWindow, htmlContent);
+});
+
+const openFile = async (browserWindow: BrowserWindow, path: string) => {
+  const content = await fs.readFile(path, { encoding: "utf-8" });
+
+  browserWindow.webContents.send(EVENTS.FILE_OPENED, content, path);
+};
+
+const saveFile = async (path: string, data: string) => {
+  await fs.writeFile(path, data, "utf-8");
 };
