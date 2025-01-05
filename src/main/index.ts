@@ -1,5 +1,6 @@
-import { app, BrowserWindow } from "electron";
+import { app, BrowserWindow, dialog } from "electron";
 import { join } from "path";
+import fs from "fs/promises";
 
 const createWindow = () => {
   const mainWindow = new BrowserWindow({
@@ -21,6 +22,10 @@ const createWindow = () => {
   mainWindow.webContents.openDevTools({
     mode: "detach",
   });
+
+  mainWindow.once("ready-to-show", () => {
+    showOpenDialog();
+  });
 };
 
 app.on("ready", createWindow);
@@ -36,3 +41,16 @@ app.on("activate", () => {
     createWindow();
   }
 });
+
+const showOpenDialog = async () => {
+  const result = await dialog.showOpenDialog({
+    properties: ["openFile"],
+    filters: [{ name: "Markdown File", extensions: ["md"] }],
+  });
+
+  if (result.canceled) return;
+
+  const content = await fs.readFile(result.filePaths[0], { encoding: "utf-8" });
+
+  console.log(content);
+};
