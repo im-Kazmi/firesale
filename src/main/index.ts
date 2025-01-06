@@ -2,7 +2,7 @@ import { app, BrowserWindow, dialog, ipcMain } from "electron";
 import { join } from "path";
 import fs from "fs/promises";
 import { EVENTS } from "../enums";
-import { appState, getAppState, updateAppState } from "../state";
+import { getAppState, updateAppState } from "../state";
 
 const createWindow = () => {
   const mainWindow = new BrowserWindow({
@@ -61,6 +61,7 @@ const showExportDialog = async (
   const result = await dialog.showSaveDialog(browserWindow, {
     properties: ["createDirectory"],
     filters: [{ name: "HTML File", extensions: ["html"] }],
+    defaultPath: "untitled.html",
   });
 
   if (result.canceled) return;
@@ -85,8 +86,18 @@ ipcMain.on(EVENTS.FILE_SAVED, async (event, markdownContent) => {
 
   if (!browserWindow) return;
 
-  console.log(getAppState());
   await saveFile(getAppState().currentFilePath!, markdownContent);
+});
+
+ipcMain.on(EVENTS.SHOW_FILE_IN_FOLER, async (event) => {
+  const browserWindow = BrowserWindow.fromWebContents(event.sender);
+
+  if (!browserWindow) return;
+
+  await dialog.showOpenDialog(browserWindow, {
+    defaultPath: getAppState().currentFilePath!,
+    properties: ["multiSelections"],
+  });
 });
 
 ipcMain.on(EVENTS.EXPORT_HTML, async (event, htmlContent) => {

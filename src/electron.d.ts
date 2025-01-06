@@ -17,5 +17,6 @@ declare interface Window {
     showExportDialog: (htmlContent: string) => void;
     saveFile: (markdownText: string) => void;
     getAppState: () => AppState;
+    showFileInFolder: () => void;
   };
 }

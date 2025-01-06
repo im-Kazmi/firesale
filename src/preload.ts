@@ -13,4 +13,5 @@ contextBridge.exposeInMainWorld("api", {
   saveFile: (markdownText: string) =>
     ipcRenderer.send(EVENTS.FILE_SAVED, markdownText),
   getAppState: () => ipcRenderer.invoke(EVENTS.GET_APP_STATE),
+  showFileInFolder: () => ipcRenderer.send(EVENTS.SHOW_FILE_IN_FOLER),
 });
