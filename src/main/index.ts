@@ -2,7 +2,7 @@ import { app, BrowserWindow, dialog, ipcMain } from "electron";
 import { join } from "path";
 import fs from "fs/promises";
 import { EVENTS } from "../enums";
-import Elements from "../renderer/elements";
+import { appState, getAppState, updateAppState } from "../state";
 
 const createWindow = () => {
   const mainWindow = new BrowserWindow({
@@ -54,7 +54,7 @@ const showOpenDialog = async (browserWindow: BrowserWindow) => {
   await openFile(browserWindow, filePath);
 };
 
-const showSaveDialog = async (
+const showExportDialog = async (
   browserWindow: BrowserWindow,
   htmlContent: string,
 ) => {
@@ -80,20 +80,37 @@ ipcMain.on(EVENTS.OPEN_DIALOG, async (event) => {
   await showOpenDialog(browserWindow);
 });
 
+ipcMain.on(EVENTS.FILE_SAVED, async (event, markdownContent) => {
+  const browserWindow = BrowserWindow.fromWebContents(event.sender);
+
+  if (!browserWindow) return;
+
+  console.log(getAppState());
+  await saveFile(getAppState().currentFilePath!, markdownContent);
+});
+
 ipcMain.on(EVENTS.EXPORT_HTML, async (event, htmlContent) => {
   const browserWindow = BrowserWindow.fromWebContents(event.sender);
 
   if (!browserWindow) return;
 
-  await showSaveDialog(browserWindow, htmlContent);
+  await showExportDialog(browserWindow, htmlContent);
 });
 
 const openFile = async (browserWindow: BrowserWindow, path: string) => {
   const content = await fs.readFile(path, { encoding: "utf-8" });
 
+  updateAppState({ currentFilePath: path, isFileDirty: false });
+
   browserWindow.webContents.send(EVENTS.FILE_OPENED, content, path);
 };
 
 const saveFile = async (path: string, data: string) => {
-  await fs.writeFile(path, data, "utf-8");
+  try {
+    await fs.writeFile(path, data, "utf-8");
+  } catch (err) {
+    console.log(err);
+  }
 };
+
+ipcMain.handle(EVENTS.GET_APP_STATE, () => getAppState());
