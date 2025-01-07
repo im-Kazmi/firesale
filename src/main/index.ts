@@ -8,6 +8,7 @@ const createWindow = () => {
   const mainWindow = new BrowserWindow({
     width: 800,
     height: 600,
+    titleBarStyle: "hidden",
     webPreferences: {
       preload: join(__dirname, "preload.js"),
       nodeIntegration: true,
@@ -25,9 +26,30 @@ const createWindow = () => {
   mainWindow.webContents.openDevTools({
     mode: "detach",
   });
+
+  mainWindow.setTitle(`kazmi`);
 };
 
 app.on("ready", createWindow);
+
+app.on("before-quit", () => {
+  const { isFileDirty } = getAppState();
+  if (isFileDirty) {
+    const response = dialog.showMessageBoxSync({
+      type: "warning",
+      buttons: ["Save", "Discard", "Cancel"],
+      defaultId: 0,
+      cancelId: 2,
+      message: "You have unsaved changes. Do you want to save before exiting?",
+    });
+
+    if (response === 0) {
+      // saveFile();
+    } else if (response === 1) {
+      app.quit();
+    }
+  }
+});
 
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
@@ -70,7 +92,21 @@ const showExportDialog = async (
 
   if (!filePath) return;
 
-  await saveFile(filePath, htmlContent);
+  await saveFile(htmlContent);
+};
+
+const showSaveDialog = async (browserWindow: BrowserWindow) => {
+  const result = await dialog.showSaveDialog(browserWindow, {
+    properties: ["createDirectory"],
+    filters: [{ name: "Save Markdown", extensions: ["md"] }],
+    defaultPath: "untitled.md",
+  });
+
+  if (result.canceled) return;
+
+  const filePath = result.filePath;
+
+  return filePath;
 };
 
 ipcMain.on(EVENTS.OPEN_DIALOG, async (event) => {
@@ -81,12 +117,12 @@ ipcMain.on(EVENTS.OPEN_DIALOG, async (event) => {
   await showOpenDialog(browserWindow);
 });
 
-ipcMain.on(EVENTS.FILE_SAVED, async (event, markdownContent) => {
+ipcMain.on(EVENTS.SAVE_FILE, async (event, markdownContent) => {
   const browserWindow = BrowserWindow.fromWebContents(event.sender);
 
   if (!browserWindow) return;
 
-  await saveFile(getAppState().currentFilePath!, markdownContent);
+  await saveFile(markdownContent);
 });
 
 ipcMain.on(EVENTS.SHOW_FILE_IN_FOLER, async (event) => {
@@ -116,9 +152,14 @@ const openFile = async (browserWindow: BrowserWindow, path: string) => {
   browserWindow.webContents.send(EVENTS.FILE_OPENED, content, path);
 };
 
-const saveFile = async (path: string, data: string) => {
+const saveFile = async (data: string) => {
   try {
-    await fs.writeFile(path, data, "utf-8");
+    const filePath =
+      getAppState().currentFilePath ??
+      (await showSaveDialog(BrowserWindow.getFocusedWindow()!));
+
+    await fs.writeFile(filePath!, data, "utf-8");
+    updateAppState({ currentFilePath: filePath, isFileDirty: false });
   } catch (err) {
     console.log(err);
   }

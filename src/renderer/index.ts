@@ -10,6 +10,10 @@ window.api.onFileOpen((content) => {
 
 Elements.MarkdownView.addEventListener("input", async () => {
   const markdownValue = Elements.MarkdownView.value;
+  Elements.SaveMarkdownButton.disabled = false;
+  const appState = await window.api.getAppState();
+
+  appState.isFileDirty = true;
 
   renderMarkdown(markdownValue);
 });
@@ -22,6 +26,8 @@ Elements.SaveMarkdownButton.addEventListener("click", async () => {
   const markdownData = Elements.MarkdownView.value;
 
   window.api.saveFile(markdownData);
+
+  Elements.SaveMarkdownButton.disabled = true;
 });
 
 Elements.ExportHtmlButton.addEventListener("click", async () => {
