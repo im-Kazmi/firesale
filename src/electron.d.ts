@@ -15,6 +15,7 @@ declare interface Window {
     onFileOpen: (cb: (content: string, path: string) => void) => void;
     showOpenDialog: () => void;
     showExportDialog: (htmlContent: string) => void;
+    openInDefaultApp: () => void;
     saveFile: (markdownText: string) => void;
     getAppState: () => AppState;
     showFileInFolder: () => void;

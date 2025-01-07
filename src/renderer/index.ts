@@ -5,6 +5,8 @@ window.api.onFileOpen((content) => {
   Elements.MarkdownView.textContent = content;
   Elements.SaveMarkdownButton.disabled = false;
   Elements.ShowFileButton.disabled = false;
+  Elements.OpenFileButton.disabled = false;
+  Elements.OpenInDefaultApplicationButton.disabled = false;
   renderMarkdown(content);
 });
 
@@ -37,4 +39,8 @@ Elements.ExportHtmlButton.addEventListener("click", async () => {
 
 Elements.ShowFileButton.addEventListener("click", async () => {
   window.api.showFileInFolder();
+});
+
+Elements.OpenInDefaultApplicationButton.addEventListener("click", async () => {
+  window.api.openInDefaultApp();
 });

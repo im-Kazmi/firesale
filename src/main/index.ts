@@ -1,4 +1,12 @@
-import { app, BrowserWindow, dialog, ipcMain } from "electron";
+import {
+  app,
+  BrowserWindow,
+  dialog,
+  ipcMain,
+  Menu,
+  MenuItemConstructorOptions,
+  shell,
+} from "electron";
 import { join } from "path";
 import fs from "fs/promises";
 import { EVENTS } from "../enums";
@@ -28,6 +36,8 @@ const createWindow = () => {
   });
 
   mainWindow.setTitle(`kazmi`);
+
+  return mainWindow;
 };
 
 app.on("ready", createWindow);
@@ -130,10 +140,15 @@ ipcMain.on(EVENTS.SHOW_FILE_IN_FOLER, async (event) => {
 
   if (!browserWindow) return;
 
-  await dialog.showOpenDialog(browserWindow, {
-    defaultPath: getAppState().currentFilePath!,
-    properties: ["multiSelections"],
-  });
+  if (getAppState().currentFilePath!) {
+    shell.showItemInFolder(getAppState().currentFilePath!);
+  }
+});
+
+ipcMain.on(EVENTS.OPEN_IN_DEFAULT_APP, async (event) => {
+  if (getAppState().currentFilePath!) {
+    await shell.openPath(getAppState().currentFilePath!);
+  }
 });
 
 ipcMain.on(EVENTS.EXPORT_HTML, async (event, htmlContent) => {
@@ -166,3 +181,39 @@ const saveFile = async (data: string) => {
 };
 
 ipcMain.handle(EVENTS.GET_APP_STATE, () => getAppState());
+
+const template: MenuItemConstructorOptions[] = [
+  {
+    label: "File",
+    submenu: [
+      {
+        label: "Open",
+        click: () => {
+          let browserWindow = BrowserWindow.getAllWindows()[0];
+
+          if (!BrowserWindow) {
+            browserWindow = createWindow();
+          }
+
+          showOpenDialog(browserWindow);
+        },
+        accelerator: "CmdOrCtrl+O",
+      },
+    ],
+  },
+  {
+    label: "Edit",
+    role: "editMenu",
+  },
+];
+
+if (process.platform === "darwin") {
+  template.unshift({
+    label: app.name,
+    role: "appMenu",
+  });
+}
+
+const menu = Menu.buildFromTemplate(template);
+
+Menu.setApplicationMenu(menu);
